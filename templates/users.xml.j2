@@ -1,5 +1,5 @@
 <clickhouse>
-  <profiles><analytics_reader><readonly>1</readonly></analytics_reader><analytics_writer><max_memory_usage>1073741824</max_memory_usage></analytics_writer></profiles>
+  <profiles><default><max_threads>2</max_threads><max_insert_threads>1</max_insert_threads></default><analytics_reader><max_threads>2</max_threads><readonly>1</readonly></analytics_reader><analytics_writer><max_threads>2</max_threads><max_insert_threads>1</max_insert_threads><max_memory_usage>1073741824</max_memory_usage></analytics_writer></profiles>
   <users>
     <default replace="replace"><profile>default</profile><quota>default</quota><password_sha256_hex>{{ clickhouse_admin_password | hash('sha256') }}</password_sha256_hex><networks replace="replace"><ip>127.0.0.1</ip><ip>::1</ip></networks></default>
     <platform_admin><password_sha256_hex>{{ clickhouse_admin_password | hash('sha256') }}</password_sha256_hex><networks><ip>127.0.0.1</ip>{% for ip in ansible_all_ipv4_addresses %}<ip>{{ ip }}</ip>{% endfor %}</networks><profile>default</profile><quota>default</quota><access_management>1</access_management></platform_admin>

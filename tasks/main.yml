@@ -150,8 +150,8 @@
   changed_when: false
   register: clickhouse_ready
   until: clickhouse_ready.rc == 0
-  retries: 36
-  delay: 5
+  retries: 18
+  delay: 3
 - name: Create the idempotent analytics schema
   ansible.builtin.command:
     argv:
