@@ -10,6 +10,7 @@ jobs:
           path: roles/clickhouse
       - run: pip install 'ansible==8.7.0'
       - name: Install and test authentication, persistence and backup restoration
+        timeout-minutes: 10
         env:
           ANSIBLE_ROLES_PATH: ${{ github.workspace }}/roles
         run: ansible-playbook -b roles/clickhouse/tests/test.yml -e clickhouse_test_restart=true -e clickhouse_test_backup=true

@@ -18,10 +18,8 @@ clickhouse_require_data_mount: false
 clickhouse_admin_password: ''
 clickhouse_writer_password: ''
 clickhouse_reader_password: ''
-clickhouse_writer_networks:
-- 127.0.0.1/32
-clickhouse_reader_networks:
-- 127.0.0.1/32
+clickhouse_writer_networks: '{{ [''127.0.0.1/32''] + (ansible_all_ipv4_addresses | map(''regex_replace'', ''$'', ''/32'') | list) }}'
+clickhouse_reader_networks: '{{ [''127.0.0.1/32''] + (ansible_all_ipv4_addresses | map(''regex_replace'', ''$'', ''/32'') | list) }}'
 clickhouse_verify: true
 clickhouse_test_restart: false
 clickhouse_test_backup: false

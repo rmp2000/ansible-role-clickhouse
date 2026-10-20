@@ -16,19 +16,19 @@ STATE = Path('/srv/clickhouse/.verification.json')
 CONFIG = json.loads((ROOT/'credentials.json').read_text())
 CONTEXT = ssl.create_default_context(cafile=str(ROOT/'tls/server.crt'))
 
-def query(sql, user='platform_admin', **parameters):
+def query(sql, user='platform_admin', timeout=60, **parameters):
     key = {'platform_admin':'admin_password','platform_writer':'writer_password','platform_reader':'reader_password'}[user]
     params = {'wait_end_of_query': '1', **{'param_'+k:str(v) for k,v in parameters.items()}}
     req = urllib.request.Request('https://'+CONFIG['host']+':8443/?'+urllib.parse.urlencode(params),
         data=sql.encode(), headers={'X-ClickHouse-User':user,'X-ClickHouse-Key':CONFIG[key]})
-    with urllib.request.urlopen(req, context=CONTEXT, timeout=60) as r:
+    with urllib.request.urlopen(req, context=CONTEXT, timeout=timeout) as r:
         return r.read().decode()
 
 def wait_ready():
     end=time.monotonic()+180
     while time.monotonic()<end:
         try:
-            if query('SELECT 1').strip()=='1':return
+            if query('SELECT 1',timeout=5).strip()=='1':return
         except Exception:
             time.sleep(2)
     raise RuntimeError('Authenticated server readiness timed out')
@@ -58,7 +58,7 @@ def schema():
 def main():
     mode=sys.argv[1]
     if mode=='ready':
-        if query('SELECT 1').strip()!='1':raise RuntimeError('Wrong readiness response')
+        if query('SELECT 1',timeout=5).strip()!='1':raise RuntimeError('Wrong readiness response')
         print('CLICKHOUSE_READY');return
     if mode=='schema':schema();return
     if mode=='stage':
