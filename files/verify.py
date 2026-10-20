@@ -92,6 +92,8 @@ def main():
                 query('DROP DATABASE IF EXISTS '+restored+' SYNC')
             print('CLICKHOUSE_BACKUP_RESTORE_OK');return
         if mode!='smoke':raise RuntimeError('Unknown check')
+        settings=query("SELECT count() FROM system.merge_tree_settings WHERE name IN ('fsync_after_insert','fsync_part_directory') AND value='1'").strip()
+        if settings!='2':raise RuntimeError('Durable insert and directory synchronization must both be enabled')
         insert(identifier)
         if not check(identifier):raise RuntimeError('Logical event uniqueness or exact payload check failed')
         try:
