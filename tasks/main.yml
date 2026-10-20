@@ -101,7 +101,7 @@
   - src: server.xml.j2
     dest: /etc/clickhouse-server/config.d/data-platform.xml
   - src: users.xml.j2
-    dest: /etc/clickhouse-server/users.d/data-platform.xml
+    dest: /etc/clickhouse-server/users.d/zz-data-platform.xml
   no_log: true
   notify: Restart ClickHouse
 - name: Retain credentials only in the protected local client configuration
