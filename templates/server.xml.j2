@@ -1,0 +1,24 @@
+<clickhouse>
+  <listen_host replace="replace">{{ clickhouse_bind_address }}</listen_host>
+  <http_port remove="remove" />
+  <tcp_port remove="remove" />
+  <interserver_http_port remove="remove" />
+  <https_port>8443</https_port>
+  <path replace="replace">{{ clickhouse_data_dir }}/data/</path>
+  <tmp_path replace="replace">{{ clickhouse_data_dir }}/tmp/</tmp_path>
+  <max_server_memory_usage>2147483648</max_server_memory_usage>
+  <max_thread_pool_size>128</max_thread_pool_size>
+  <background_pool_size>16</background_pool_size>
+  <background_schedule_pool_size>4</background_schedule_pool_size>
+  <background_buffer_flush_schedule_pool_size>2</background_buffer_flush_schedule_pool_size>
+  <background_message_broker_schedule_pool_size>2</background_message_broker_schedule_pool_size>
+  <background_distributed_schedule_pool_size>2</background_distributed_schedule_pool_size>
+  <openSSL><server>
+    <certificateFile>/etc/clickhouse-platform/tls/server.crt</certificateFile>
+    <privateKeyFile>/etc/clickhouse-platform/tls/server.key</privateKeyFile>
+    <verificationMode>none</verificationMode>
+  </server></openSSL>
+  <storage_configuration><disks><backups><type>local</type><path>{{ clickhouse_data_dir }}/backups/</path></backups></disks></storage_configuration>
+  <backups><allowed_disk>backups</allowed_disk><allowed_path>{{ clickhouse_data_dir }}/backups/</allowed_path></backups>
+  <prometheus><endpoint>/metrics</endpoint><port>9363</port><metrics>true</metrics><events>true</events><asynchronous_metrics>true</asynchronous_metrics></prometheus>
+</clickhouse>

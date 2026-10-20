@@ -1,0 +1,27 @@
+clickhouse_version: 26.8.31.2
+clickhouse_packages:
+- Package: clickhouse-client
+  Version: 26.8.31.2
+  Filename: pool/main/c/clickhouse/clickhouse-client_26.8.31.2_amd64.deb
+  SHA256: 9520c8ab64b058b9462a87da56001d5a2db65f9296bd413d1b23c45791d010da
+- Package: clickhouse-common-static
+  Version: 26.8.31.2
+  Filename: pool/main/c/clickhouse/clickhouse-common-static_26.8.31.2_amd64.deb
+  SHA256: cc56ebfe87da1e3d9e24952d247625ecf88890226e138da0b818ee9ffb2b70cb
+- Package: clickhouse-server
+  Version: 26.8.31.2
+  Filename: pool/main/c/clickhouse/clickhouse-server_26.8.31.2_amd64.deb
+  SHA256: 07e3eb78f6a955267efd3a7322ce28bbbd423522364b1978b65f5f9538560de1
+clickhouse_bind_address: 127.0.0.1
+clickhouse_data_dir: /srv/clickhouse
+clickhouse_require_data_mount: false
+clickhouse_admin_password: ''
+clickhouse_writer_password: ''
+clickhouse_reader_password: ''
+clickhouse_writer_networks:
+- 127.0.0.1/32
+clickhouse_reader_networks:
+- 127.0.0.1/32
+clickhouse_verify: true
+clickhouse_test_restart: false
+clickhouse_test_backup: false

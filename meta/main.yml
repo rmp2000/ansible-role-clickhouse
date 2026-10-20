@@ -1,0 +1,10 @@
+galaxy_info:
+  role_name: clickhouse
+  author: rmp2000
+  description: Pinned native ClickHouse with private HTTPS, scoped users and persistent analytics.
+  license: Apache-2.0
+  min_ansible_version: '2.16'
+  platforms:
+    - name: Ubuntu
+      versions: [jammy]
+dependencies: []

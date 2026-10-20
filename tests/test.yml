@@ -1,0 +1,9 @@
+- hosts: localhost
+  connection: local
+  become: true
+  vars:
+    clickhouse_admin_password: ci-only-admin-password-1234567890
+    clickhouse_writer_password: ci-only-writer-password-1234567890
+    clickhouse_reader_password: ci-only-reader-password-1234567890
+  roles:
+  - clickhouse

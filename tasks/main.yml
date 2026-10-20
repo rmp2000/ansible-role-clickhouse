@@ -1,0 +1,188 @@
+- name: Validate the supported host and required credentials
+  ansible.builtin.assert:
+    that:
+    - ansible_distribution == 'Ubuntu'
+    - ansible_distribution_major_version == '22'
+    - ansible_architecture == 'x86_64'
+    - clickhouse_admin_password | length >= 24
+    - clickhouse_writer_password | length >= 24
+    - clickhouse_reader_password | length >= 24
+  no_log: true
+- name: Require the dedicated data mount when requested
+  ansible.builtin.command:
+    argv:
+    - mountpoint
+    - -q
+    - '{{ clickhouse_data_dir }}'
+  changed_when: false
+  when: clickhouse_require_data_mount | bool
+- name: Install TLS and client tools
+  ansible.builtin.apt:
+    name:
+    - openssl
+    - python3
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+- name: Download the verified immutable official packages
+  ansible.builtin.get_url:
+    url: https://packages.clickhouse.com/deb/{{ item.Filename }}
+    checksum: sha256:{{ item.SHA256 }}
+    dest: /var/cache/{{ item.Package }}-{{ clickhouse_version }}.deb
+    mode: '0644'
+    timeout: 60
+  loop: '{{ clickhouse_packages }}'
+  async: 900
+  poll: 10
+- name: Install the pinned server and client
+  ansible.builtin.apt:
+    deb: /var/cache/{{ item }}-{{ clickhouse_version }}.deb
+    state: present
+    policy_rc_d: 101
+  environment:
+    DEBIAN_FRONTEND: noninteractive
+  loop:
+  - clickhouse-common-static
+  - clickhouse-client
+  - clickhouse-server
+  notify: Restart ClickHouse
+- name: Create persistent and protected configuration directories
+  ansible.builtin.file:
+    path: '{{ item }}'
+    state: directory
+    owner: clickhouse
+    group: clickhouse
+    mode: '0750'
+  loop:
+  - '{{ clickhouse_data_dir }}'
+  - '{{ clickhouse_data_dir }}/data'
+  - '{{ clickhouse_data_dir }}/backups'
+  - /etc/clickhouse-platform
+  - /etc/clickhouse-platform/tls
+- name: Generate the persistent server TLS certificate
+  ansible.builtin.command:
+    argv:
+    - openssl
+    - req
+    - -x509
+    - -newkey
+    - rsa:3072
+    - -nodes
+    - -days
+    - '365'
+    - -keyout
+    - /etc/clickhouse-platform/tls/server.key
+    - -out
+    - /etc/clickhouse-platform/tls/server.crt
+    - -subj
+    - /CN=clickhouse-platform
+    - -addext
+    - subjectAltName=DNS:localhost,DNS:{{ ansible_hostname }},DNS:{{ ansible_fqdn }},IP:127.0.0.1,IP:{{ ansible_all_ipv4_addresses |
+      join(',IP:') }}
+    creates: /etc/clickhouse-platform/tls/server.crt
+  notify: Restart ClickHouse
+- name: Protect the TLS identity
+  ansible.builtin.file:
+    path: /etc/clickhouse-platform/tls/{{ item }}
+    owner: clickhouse
+    group: clickhouse
+    mode: '0640'
+  loop:
+  - server.key
+  - server.crt
+- name: Install private-only listener and scoped users
+  ansible.builtin.template:
+    src: '{{ item.src }}'
+    dest: '{{ item.dest }}'
+    owner: root
+    group: clickhouse
+    mode: '0640'
+  loop:
+  - src: server.xml.j2
+    dest: /etc/clickhouse-server/config.d/data-platform.xml
+  - src: users.xml.j2
+    dest: /etc/clickhouse-server/users.d/data-platform.xml
+  no_log: true
+  notify: Restart ClickHouse
+- name: Retain credentials only in the protected local client configuration
+  ansible.builtin.copy:
+    content: '{{ {''host'':clickhouse_bind_address,''admin_password'':clickhouse_admin_password,''writer_password'':clickhouse_writer_password,''reader_password'':clickhouse_reader_password}
+      | to_nice_json }}'
+    dest: /etc/clickhouse-platform/credentials.json
+    owner: root
+    group: root
+    mode: '0600'
+  no_log: true
+- name: Order the service after its data filesystem
+  ansible.builtin.file:
+    path: /etc/systemd/system/clickhouse-server.service.d
+    state: directory
+    mode: '0755'
+- name: Require persistent storage before starting ClickHouse
+  ansible.builtin.copy:
+    content: '[Unit]
+
+      RequiresMountsFor={{ clickhouse_data_dir }}
+
+      '
+    dest: /etc/systemd/system/clickhouse-server.service.d/storage.conf
+    mode: '0644'
+  notify: Restart ClickHouse
+- name: Install the root-only functional verifier
+  ansible.builtin.copy:
+    src: verify.py
+    dest: /usr/local/bin/clickhouse-platform-verify
+    mode: '0755'
+- name: Apply the configured service
+  ansible.builtin.meta: flush_handlers
+- name: Start only the configured server
+  ansible.builtin.systemd:
+    name: clickhouse-server
+    state: started
+    enabled: true
+    daemon_reload: true
+- name: Wait for authenticated HTTPS
+  ansible.builtin.command:
+    argv:
+    - python3
+    - /usr/local/bin/clickhouse-platform-verify
+    - ready
+  changed_when: false
+  register: clickhouse_ready
+  until: clickhouse_ready.rc == 0
+  retries: 36
+  delay: 5
+- name: Create the idempotent analytics schema
+  ansible.builtin.command:
+    argv:
+    - python3
+    - /usr/local/bin/clickhouse-platform-verify
+    - schema
+  register: clickhouse_schema
+  changed_when: '''SCHEMA_CREATED'' in clickhouse_schema.stdout'
+- name: Verify authentication permissions and logical duplicate handling
+  ansible.builtin.command:
+    argv:
+    - python3
+    - /usr/local/bin/clickhouse-platform-verify
+    - smoke
+  changed_when: false
+  when: clickhouse_verify | bool
+- name: Report functional success
+  ansible.builtin.debug:
+    msg: CLICKHOUSE_SMOKE_OK
+  when: clickhouse_verify | bool
+- name: Optionally verify service restart persistence
+  ansible.builtin.command:
+    argv:
+    - python3
+    - /usr/local/bin/clickhouse-platform-verify
+    - restart
+  when: clickhouse_test_restart | bool
+- name: Optionally verify a real backup restored into an isolated database
+  ansible.builtin.command:
+    argv:
+    - python3
+    - /usr/local/bin/clickhouse-platform-verify
+    - backup
+  when: clickhouse_test_backup | bool

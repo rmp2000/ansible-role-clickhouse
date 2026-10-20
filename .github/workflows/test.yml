@@ -1,0 +1,27 @@
+name: Native ClickHouse verification
+on: [push, workflow_dispatch]
+jobs:
+  verify:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: roles/clickhouse
+      - run: pip install 'ansible==8.7.0'
+      - name: Install and test authentication, persistence and backup restoration
+        env:
+          ANSIBLE_ROLES_PATH: ${{ github.workspace }}/roles
+        run: ansible-playbook -b roles/clickhouse/tests/test.yml -e clickhouse_test_restart=true -e clickhouse_test_backup=true
+      - name: Check application idempotence
+        env:
+          ANSIBLE_ROLES_PATH: ${{ github.workspace }}/roles
+        run: |
+          set -o pipefail
+          ansible-playbook -b roles/clickhouse/tests/test.yml | tee /tmp/idempotence.log
+          grep -Eq 'changed=0[[:space:]]+unreachable=0[[:space:]]+failed=0' /tmp/idempotence.log
+      - name: Diagnostics
+        if: failure()
+        run: |
+          sudo journalctl -u clickhouse-server --no-pager -n 90
+          sudo tail -n 70 /var/log/clickhouse-server/clickhouse-server.err.log || true
